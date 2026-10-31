@@ -448,6 +448,32 @@ def set_tags(board_input, item_id, tag_names_csv):
     return res
 
 
+def move_item_group(board_input, item_id, target_group):
+    """Mueve una tarjeta entre Sprints o Grupos del tablero (Backlog -> Sprint 1 -> Done, etc.)."""
+    board = resolve_board(board_input)
+    if not board:
+        return
+    groups = board.get("groups", [])
+    group_id = None
+    if str(target_group).isdigit():
+        group_id = int(target_group)
+    else:
+        for g in groups:
+            if target_group.lower() in g.get("title", "").lower():
+                group_id = g.get("id")
+                break
+    if not group_id:
+        print(f"❌ Grupo '{target_group}' no encontrado. Grupos: {', '.join(g.get('title') for g in groups)}")
+        return
+
+    url = f"https://api.plaky.com/v1/public/spaces/{SPACE_ID}/boards/{board.get('id')}/items/{item_id}/group"
+    res = _request("PATCH", url, {"itemGroupId": group_id})
+    if res:
+        gname = next((g.get("title") for g in groups if g.get("id") == group_id), group_id)
+        print(f"📦 Tarea {item_id} movida con éxito al grupo '{gname}'.")
+    return res
+
+
 def update_status(board_input, item_id, status_val):
     """Actualiza el estado visual (status-1) en el tablero."""
     res = update_field(board_input, item_id, "status-1", str(status_val))
@@ -543,6 +569,7 @@ Consultas de Tablero e Ítems (READ):
 
 Acciones / Modificaciones (WRITE):
   create     <tablero> <título> [grupo]  Crea un ítem (ej. en "Backlog", "Sprint 1", etc.)
+  move       <tablero> <item_id> <grupo> Mueve una tarjeta a otro Sprint/Grupo
   assign     <tablero> <item_id> [uid]   Asigna la tarjeta a un usuario por ID
   status     <tablero> <item_id> <review|stuck|refinement|ready|done|progress> [comentario/PR_link]
   priority   <tablero> <item_id> <high|medium|low|none> Establece prioridad
@@ -600,6 +627,8 @@ if __name__ == "__main__":
         get_comments(board_arg, sys.argv[3])
     elif cmd == "create" and len(sys.argv) > 3:
         create_item(board_arg, sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else "sprint_1")
+    elif cmd == "move" and len(sys.argv) > 4:
+        move_item_group(board_arg, sys.argv[3], sys.argv[4])
     elif cmd == "assign" and len(sys.argv) > 3:
         assign_item(board_arg, sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else USER_DEFAULT)
     elif cmd == "priority" and len(sys.argv) > 4:
