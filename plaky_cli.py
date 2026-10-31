@@ -296,6 +296,35 @@ def delete_comment(board_name, item_id, comment_id):
     return res
 
 
+def set_auth(token=None):
+    """Guarda o actualiza la API Key de Plaky de forma global en ~/.config/plaky/config.env."""
+    if not token:
+        if len(sys.argv) > 2:
+            token = sys.argv[2]
+        else:
+            token = input("Introduce tu PLAKY_API_KEY: ").strip()
+
+    if not token:
+        print("❌ Token vacío.")
+        return
+
+    cfg_dir = os.path.join(os.path.expanduser("~"), ".config", "plaky")
+    os.makedirs(cfg_dir, exist_ok=True)
+    cfg_path = os.path.join(cfg_dir, "config.env")
+
+    # Leer variables existentes si hay
+    space_id = os.environ.get("PLAKY_SPACE_ID", "222146")
+    user_id = os.environ.get("PLAKY_USER_ID", "494741")
+
+    with open(cfg_path, "w", encoding="utf-8") as f:
+        f.write("# Configuración global para Plaky CLI\n")
+        f.write(f'PLAKY_API_KEY="{token}"\n')
+        f.write(f'PLAKY_SPACE_ID="{space_id}"\n')
+        f.write(f'PLAKY_USER_ID="{user_id}"\n')
+
+    print(f"✅ Token guardado exitosamente en {cfg_path}")
+
+
 def list_users():
     """Lista todos los usuarios del sistema con sus IDs, nombres y correos."""
     url = "https://api.plaky.com/v1/public/users"
@@ -386,7 +415,10 @@ def set_status_comment(board_name, item_id, status_name, extra_text=""):
 # ── CLI ─────────────────────────────────────────────────────────────────────
 
 USAGE = """
-Uso: python3 plaky_api_helper.py <comando> [tablero] [args...]
+Uso: plaky <comando> [tablero] [args...]
+
+Configuración y Autenticación:
+  auth       [token]                    Guarda tu API Key de Plaky en ~/.config/plaky/config.env
 
 Consultas de Sistema y Usuarios:
   users                                 Lista todos los usuarios (IDs, nombres y emails)
@@ -421,7 +453,10 @@ if __name__ == "__main__":
 
     cmd = sys.argv[1].lower()
 
-    if cmd == "users":
+    if cmd == "auth":
+        set_auth(sys.argv[2] if len(sys.argv) > 2 else None)
+        sys.exit(0)
+    elif cmd == "users":
         list_users()
         sys.exit(0)
     elif cmd == "space":
