@@ -421,6 +421,33 @@ def set_story_points(board_input, item_id, points):
     return res
 
 
+def set_tags(board_input, item_id, tag_names_csv):
+    """Asigna etiquetas/tags por nombre (ej: 'Backend,Feature' o 'Bug')."""
+    board = resolve_board(board_input)
+    if not board:
+        return
+    tag_field = next((f for f in board.get("fields", []) if f.get("type") == "TAG"), None)
+    if not tag_field:
+        print("❌ Este tablero no tiene un campo de tipo TAG.")
+        return
+
+    available_tags = tag_field.get("configuration", {}).get("values", [])
+    tag_map = {t["title"].lower(): t["key"] for t in available_tags}
+    
+    selected_keys = []
+    for name in tag_names_csv.split(","):
+        n = name.strip().lower()
+        if n in tag_map:
+            selected_keys.append(tag_map[n])
+        else:
+            print(f"⚠️ Etiqueta '{name}' no existe en este tablero. Opciones: {', '.join(tag_map.keys())}")
+
+    res = update_field(board_input, item_id, tag_field["key"], selected_keys)
+    if res:
+        print(f"✅ Etiquetas actualizadas para {item_id}: {tag_names_csv}")
+    return res
+
+
 def update_status(board_input, item_id, status_val):
     """Actualiza el estado visual (status-1) en el tablero."""
     res = update_field(board_input, item_id, "status-1", str(status_val))
@@ -519,6 +546,7 @@ Acciones / Modificaciones (WRITE):
   assign     <tablero> <item_id> [uid]   Asigna la tarjeta a un usuario por ID
   status     <tablero> <item_id> <review|stuck|refinement|ready|done|progress> [comentario/PR_link]
   priority   <tablero> <item_id> <high|medium|low|none> Establece prioridad
+  tags       <tablero> <item_id> <tag1,tag2> Asigna etiquetas por nombre (ej: "Backend,Feature")
   points     <tablero> <item_id> <pts>   Asigna story points
   comment    <tablero> <item_id> <texto> Agrega un comentario a la tarea
 
@@ -576,6 +604,8 @@ if __name__ == "__main__":
         assign_item(board_arg, sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else USER_DEFAULT)
     elif cmd == "priority" and len(sys.argv) > 4:
         set_priority(board_arg, sys.argv[3], sys.argv[4])
+    elif cmd == "tags" and len(sys.argv) > 4:
+        set_tags(board_arg, sys.argv[3], sys.argv[4])
     elif cmd == "points" and len(sys.argv) > 4:
         set_story_points(board_arg, sys.argv[3], sys.argv[4])
     elif cmd == "comment" and len(sys.argv) > 4:
